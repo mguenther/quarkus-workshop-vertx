@@ -47,3 +47,58 @@ service.illegalTrades()
 ## Task 1.3 
 
 The issue is, that the verticle can be un-deployed, but that won't stop the subscriptions. The subscribe returns an object of the type cancellable - we should save these objects and make sure to close them in the `asyncStop()` method.
+
+## Task 2.1 
+
+We have the vertx-object, so we just have to find the consume method and define a message handler (the code for the illegal trade is 1:1 the same, just a different consumer address and maybe log string)
+
+```java 
+vertx.eventBus().consumer("trade.valid", message -> {
+    LOG.info("Received trade message: " + message.body());
+});
+```
+
+
+## Task 2.2
+
+We have to send the received items reactively on the RoutingContext. The code looks like this (again, the code for the illegal trades is pretty much c&p)
+
+```java 
+vertx.eventBus().consumer("trade.valid", message -> {
+    LOG.info("Received trade message: " + message.body());
+    Uni.createFrom().item(message.body())
+        .onItem().transformToUni(msg -> context.response().write("data: " + msg + "\n").replaceWith(msg))
+        .subscribe()
+        .with(
+            msg -> LOG.info("Sent message to client: " + msg)
+        );
+});
+```
+
+## Task 3.1
+
+If you see the trades distributed on all tabs (e.g. Trade 1 on Tab 2, Trade 2 on Tab 2, Trade 3 on Tab 3 etc) this means, that you didn't use the correct method to send your event via the event bus. We have to use publish to send the events to **all** subscribers.
+
+
+## Task 3.2
+
+If we close a tab the connection will be killed, but there is still the message consumer happily getting and trying to send the messages to the client(s).
+
+In order to mitigate this we have to catch the failure-condition and close the consumer for good.
+
+```java 
+final MessageConsumer<String> consumer = vertx.eventBus().consumer("trade.valid");
+
+consumer.handler(message -> {
+    LOG.info("Received trade message: " + message.body());
+    Uni.createFrom().item(message.body())
+            .onItem().transformToUni(msg -> context.response().write("data: " + msg + "\n").replaceWith(msg))
+            .subscribe()
+            .with(
+                    msg -> LOG.info("Sent message to client: " + msg),
+                    failure -> consumer.unregister().subscribe().with(
+                            result -> LOG.info("Successfully unsubscribed after error.")
+                    )
+            );
+});
+```
