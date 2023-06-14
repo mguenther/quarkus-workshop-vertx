@@ -16,7 +16,7 @@ public class MutinyAdvancedTest {
         Uni<String> dataUni = Uni.createFrom().item("Fetch Data");
 
         Multi.createFrom().ticks().every(Duration.ofSeconds(1))
-                .onItem().transformToUniAndMerge(tick -> dataUni.onItem().transform(data -> data + " " + tick))
+                .onItem().transformToUniAndConcatenate(tick -> dataUni.onItem().transform(data -> data + " " + tick))
                 .subscribe().with(
                         item -> System.out.println("Received: " + item),
                         failure -> System.err.println("Failed with: " + failure)
@@ -43,13 +43,15 @@ public class MutinyAdvancedTest {
     @Test
     void task_2_3_failureIsolation() throws InterruptedException {
         Multi<Integer> numbers = Multi.createFrom().range(1, 1000)
-                .onItem().transformToUniAndConcatenate(n -> Uni.createFrom().item(n)
+                .onItem().transformToUniAndConcatenate(n ->
+                        Uni.createFrom().item(n)
                         .onItem().invoke(v -> {
                             if (v == 7) {
                                 throw new IllegalArgumentException("We don't like seven!");
                             }
                         })
-                        .onFailure().recoverWithItem(4));
+                        .onFailure().recoverWithItem(4)
+                );
 
         numbers
                 .subscribe().with(

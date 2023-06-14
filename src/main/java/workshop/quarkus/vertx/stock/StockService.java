@@ -38,8 +38,7 @@ public class StockService {
 
     public Multi<Trade> validatedTrades() {
         return exchange.liveTrades()
-                .onItem().transformToUni(TradeInspector::inspectTrade)
-                .merge()
+                .onItem().transformToUniAndMerge(TradeInspector::inspectTrade)
                 .onFailure().retry().indefinitely();
     }
 
