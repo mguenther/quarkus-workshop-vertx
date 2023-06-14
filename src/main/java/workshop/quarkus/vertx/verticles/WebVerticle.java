@@ -28,7 +28,7 @@ public class WebVerticle extends AbstractVerticle {
         router.get("/trades/valid").produces("text/event-stream")
                 .handler(handlers::validTrades);
 
-        router.get("/trades/valid").produces("text/event-stream")
+        router.get("/trades/illegal").produces("text/event-stream")
                 .handler(handlers::invalidTrades);
 
         return router;
